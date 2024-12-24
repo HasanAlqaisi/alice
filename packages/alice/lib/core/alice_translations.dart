@@ -90,6 +90,7 @@ class AliceTranslations {
         AliceTranslationKey.callsListSort: "Sort",
         AliceTranslationKey.callsListDelete: "Delete",
         AliceTranslationKey.callsListStats: "Stats",
+        AliceTranslationKey.callsListShare: "Share",
         AliceTranslationKey.callsListSave: "Save",
         AliceTranslationKey.logsEmpty: "There are no logs to show",
         AliceTranslationKey.logsError: "Failed to display error",

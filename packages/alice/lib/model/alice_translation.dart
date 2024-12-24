@@ -76,6 +76,7 @@ enum AliceTranslationKey {
   callsListSort,
   callsListDelete,
   callsListStats,
+  callsListShare,
   callsListSave,
   logsEmpty,
   logsError,

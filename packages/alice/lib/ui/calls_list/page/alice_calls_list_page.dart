@@ -1,7 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:alice/core/alice_core.dart';
-import 'package:alice/helper/operating_system.dart';
 import 'package:alice/model/alice_export_result.dart';
 import 'package:alice/model/alice_http_call.dart';
 import 'package:alice/model/alice_translation.dart';
@@ -17,7 +16,6 @@ import 'package:alice/ui/common/alice_page.dart';
 import 'package:alice/ui/calls_list/widget/alice_logs_screen.dart';
 import 'package:alice/ui/common/alice_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
 
 /// Page which displays list of calls caught by Alice. It displays tab view
 /// where calls and logs can be inspected. It allows to sort calls, delete calls
@@ -223,6 +221,8 @@ class _AliceCallsListPageState extends State<AliceCallsListPage>
         _onRemovePressed();
       case AliceCallDetailsMenuItemType.stats:
         _onStatsPressed();
+      case AliceCallDetailsMenuItemType.share:
+        _shareCalls();
       case AliceCallDetailsMenuItemType.save:
         _saveToFile();
     }
@@ -253,6 +253,44 @@ class _AliceCallsListPageState extends State<AliceCallsListPage>
     AliceNavigation.navigateToStats(core: aliceCore);
   }
 
+  void _shareCalls() async {
+    if (!mounted) return;
+    final result = await aliceCore.shareCalls(context);
+
+    if (!result.success || result.path == null) {
+      final [String title, String description] = switch (result.error) {
+        AliceExportResultError.logGenerate => [
+            context.i18n(AliceTranslationKey.saveDialogPermissionErrorTitle),
+            context
+                .i18n(AliceTranslationKey.saveDialogPermissionErrorDescription),
+          ],
+        AliceExportResultError.empty => [
+            context.i18n(AliceTranslationKey.saveDialogEmptyErrorTitle),
+            context.i18n(AliceTranslationKey.saveDialogEmptyErrorDescription),
+          ],
+        AliceExportResultError.permission => [
+            context.i18n(AliceTranslationKey.saveDialogPermissionErrorTitle),
+            context
+                .i18n(AliceTranslationKey.saveDialogPermissionErrorDescription),
+          ],
+        AliceExportResultError.file => [
+            context.i18n(AliceTranslationKey.saveDialogFileSaveErrorTitle),
+            context
+                .i18n(AliceTranslationKey.saveDialogFileSaveErrorDescription),
+          ],
+        _ => ["", ""],
+      };
+
+      if (title.isNotEmpty || description.isNotEmpty) {
+        AliceGeneralDialog.show(
+          context: context,
+          title: title,
+          description: description,
+        );
+      }
+    }
+  }
+
   /// Called when save to file has been pressed. It saves data to file.
   void _saveToFile() async {
     if (!mounted) return;
@@ -265,11 +303,6 @@ class _AliceCallsListPageState extends State<AliceCallsListPage>
         description: context
             .i18n(AliceTranslationKey.saveSuccessDescription)
             .replaceAll("[path]", result.path!),
-        secondButtonTitle: OperatingSystem.isAndroid
-            ? context.i18n(AliceTranslationKey.saveSuccessView)
-            : null,
-        secondButtonAction: () =>
-            OperatingSystem.isAndroid ? OpenFilex.open(result.path!) : null,
       );
     } else {
       final [String title, String description] = switch (result.error) {
@@ -295,11 +328,13 @@ class _AliceCallsListPageState extends State<AliceCallsListPage>
         _ => ["", ""],
       };
 
-      AliceGeneralDialog.show(
-        context: context,
-        title: title,
-        description: description,
-      );
+      if (title.isNotEmpty || description.isNotEmpty) {
+        AliceGeneralDialog.show(
+          context: context,
+          title: title,
+          description: description,
+        );
+      }
     }
   }
 
@@ -426,6 +461,8 @@ class _ContextMenuButton extends StatelessWidget {
         return context.i18n(AliceTranslationKey.callsListDelete);
       case AliceCallDetailsMenuItemType.stats:
         return context.i18n(AliceTranslationKey.callsListStats);
+      case AliceCallDetailsMenuItemType.share:
+        return context.i18n(AliceTranslationKey.callsListShare);
       case AliceCallDetailsMenuItemType.save:
         return context.i18n(AliceTranslationKey.callsListSave);
     }
@@ -440,6 +477,8 @@ class _ContextMenuButton extends StatelessWidget {
         return Icons.delete;
       case AliceCallDetailsMenuItemType.stats:
         return Icons.insert_chart;
+      case AliceCallDetailsMenuItemType.share:
+        return Icons.share;
       case AliceCallDetailsMenuItemType.save:
         return Icons.save;
     }

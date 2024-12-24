@@ -16,5 +16,6 @@ enum AliceCallDetailsMenuItemType {
   sort,
   delete,
   stats,
+  share,
   save,
 }

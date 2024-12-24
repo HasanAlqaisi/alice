@@ -133,6 +133,12 @@ class AliceCore {
         _configuration.aliceStorage.getCalls(),
       );
 
+  Future<AliceExportResult> shareCalls(BuildContext context) =>
+      AliceExportHelper.shareCalls(
+        context,
+        _configuration.aliceStorage.getCalls(),
+      );
+
   /// Adds new log to Alice logger.
   void addLog(AliceLog log) => _configuration.aliceLogger.add(log);
 

@@ -12,6 +12,7 @@ import 'package:alice/model/alice_translation.dart';
 import 'package:alice/ui/common/alice_context_ext.dart';
 import 'package:alice/utils/alice_parser.dart';
 import 'package:alice/utils/curl.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -45,11 +46,34 @@ class AliceExportHelper {
     return AliceExportResult(success: true);
   }
 
-  /// Format log based on [calls] and saves it to file.
-  static Future<AliceExportResult> saveCallsToFile(
+  static Future<AliceExportResult> shareCalls(
     BuildContext context,
     List<AliceHttpCall> calls,
   ) async {
+    try {
+      final result = await saveCallsToFile(context, calls, tempFile: true);
+
+      if (result.error != null) {
+        return result;
+      }
+
+      await Share.shareXFiles(
+        [XFile(result.path!)],
+        subject: context.i18n(AliceTranslationKey.emailSubject),
+      );
+
+      return AliceExportResult(success: true);
+    } catch (exception) {
+      return AliceExportResult(success: false);
+    }
+  }
+
+  /// Format log based on [calls] and saves it to file.
+  static Future<AliceExportResult> saveCallsToFile(
+    BuildContext context,
+    List<AliceHttpCall> calls, {
+    bool tempFile = false,
+  }) async {
     final bool permissionStatus = await _getPermissionStatus();
     if (!permissionStatus) {
       final bool status = await _requestPermission();
@@ -61,7 +85,11 @@ class AliceExportHelper {
       }
     }
 
-    return await _saveToFile(context, calls);
+    if (tempFile) {
+      return await _saveToTempFile(context, calls);
+    } else {
+      return await _saveToFile(context, calls);
+    }
   }
 
   /// Returns current storage permission status. Checks permission for iOS
@@ -87,6 +115,53 @@ class AliceExportHelper {
   /// Saves [calls] to file. For android it uses external storage directory and
   /// for ios it uses application documents directory.
   static Future<AliceExportResult> _saveToFile(
+    BuildContext context,
+    List<AliceHttpCall> calls,
+  ) async {
+    try {
+      if (calls.isEmpty) {
+        return AliceExportResult(
+          success: false,
+          error: AliceExportResultError.empty,
+        );
+      }
+
+      final Directory externalDir = await getApplicationCacheDirectory();
+      final String fileName =
+          '${_fileName}_${DateTime.now().millisecondsSinceEpoch}';
+      final File file = File('${externalDir.path}/$fileName')..createSync();
+      final IOSink sink = file.openWrite(mode: FileMode.append)
+        ..write(await _buildAliceLog(context: context));
+      for (final AliceHttpCall call in calls) {
+        sink.write(_buildCallLog(context: context, call: call));
+      }
+      await sink.flush();
+      await sink.close();
+
+      final path = await FileSaver.instance.saveAs(
+        name: fileName,
+        filePath: file.path,
+        ext: '.txt',
+        mimeType: MimeType.text,
+      );
+
+      // delete temp file
+      await file.delete();
+
+      return AliceExportResult(
+        success: true,
+        path: path,
+      );
+    } catch (exception) {
+      AliceUtils.log(exception.toString());
+      return AliceExportResult(
+        success: false,
+        error: AliceExportResultError.file,
+      );
+    }
+  }
+
+  static Future<AliceExportResult> _saveToTempFile(
     BuildContext context,
     List<AliceHttpCall> calls,
   ) async {
