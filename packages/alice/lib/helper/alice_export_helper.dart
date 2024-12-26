@@ -141,7 +141,7 @@ class AliceExportHelper {
       final path = await FileSaver.instance.saveAs(
         name: fileName,
         filePath: file.path,
-        ext: '.txt',
+        ext: 'txt',
         mimeType: MimeType.text,
       );
 
